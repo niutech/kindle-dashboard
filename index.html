@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kindle Dashboard</title>
+  <style type="text/css">
+html {
+}
+body {
+  position: relative;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 800px;
+}
+a {
+  color: #000;
+  text-decoration: none;
+}
+img {
+  max-width: 100%;
+}
+#time {
+  margin: 0;
+  padding: 0 10px;
+  border-bottom: 1px solid #000;
+  font-size: 6em;
+}
+#time span {
+  float: right;
+  margin: 10px 0;
+  font-size: 0.4em;
+  text-align: right;
+}
+p {
+  margin: 5px 0;
+}
+#todos {
+  padding-left: 10px;
+  border-bottom: 1px solid #000;
+}
+#todo, #todo2 {
+  width: 49%;
+  height: 85px;
+  border: none;
+}
+#news {
+  padding-left: 10px;
+  border-bottom: 1px solid #000;
+}
+#airly {
+  text-align: center;
+  border-bottom: 1px solid #000;
+}
+#history, #forecast {
+  margin: 10px 0;
+  border-bottom: 1px solid #aaa;
+  vertical-align: middle;
+}
+#meteo {
+  display: block;
+  margin: auto;
+  -webkit-filter: grayscale(100%) contrast(1.5);
+  filter: grayscale(100%) contrast(1.5);
+}
+#preview {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px;
+  background-color: #fff;
+  font-size: 1.25em;
+}
+#close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0 10px;
+  font-size: 2em;
+}
+  </style>
+</head>
+<body>
+  <h1 id="time"></h1>
+  <div id="todos"><textarea id="todo"></textarea><textarea id="todo2"></textarea></div>
+  <div id="news"></div>
+  <div id="airly"></div>
+  <img id="meteo" src="" alt="">
+  <div id="preview"><a id="close" href="#" onclick="closePreview(event)">×</a><div></div></div>
+  <script type="text/javascript">
+// Clock
+var sleepHours = [0, 8]; // when not to fetch
+var everyHours = 4; // how often fetch
+var days = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+var months = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+function tick() {
+  var today = new Date();
+  var mo = months[today.getMonth()];
+  var d = today.getDate();
+  var dw = days[today.getDay()];
+  var h = today.getHours();
+  var m = today.getMinutes();
+  document.getElementById('time').innerHTML = h + ':' + (m < 10 ? '0' : '') + m + ' <span>' + dw + '<br>' + d + '. ' + mo + '</span>';
+  if (m == 0 && (h < sleepHours[0] || h >= sleepHours[1])) {
+    fetchAirly();
+    if (!(h % everyHours)) {
+      fetchNews();
+      fetchMeteo();
+    }
+  }
+}
+tick();
+setInterval(tick, 60*1000);
+
+// To-Do
+var todo = document.getElementById('todo');
+var todo2 = document.getElementById('todo2');
+todo.value = decodeURIComponent((document.cookie.match(/(^|;)\s*todo\s*=\s*([^;]+)/) || []).pop() || '');
+todo2.value = decodeURIComponent((document.cookie.match(/(^|;)\s*todo2\s*=\s*([^;]+)/) || []).pop() || '');
+todo.onchange = todo2.onchange = function () {
+  var d = new Date();
+  d.setTime(d.getTime() + (365*24*60*60*1000));
+  document.cookie = this.id + '=' + encodeURIComponent(this.value) + '; expires=' + d.toUTCString() + '; samesite=strict';
+};
+
+// Google News
+var newsUrl = 'proxy.php?type=news';
+var news = document.getElementById('news');
+var preview = document.getElementById('preview');
+var close = document.getElementById('close');
+function showPreview(e) {
+  e.preventDefault();
+  preview.lastChild.innerHTML = '<h2>' + e.target.innerHTML + '</h2>' + decodeURIComponent(e.target.getAttribute('data-description'));
+  preview.style.display = 'block';
+}
+function closePreview(e) {
+  e.preventDefault();
+  preview.style.display = 'none';
+}
+function fetchNews() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', newsUrl);
+  xhr.onreadystatechange = function () {
+    if (this.readyState == 4 && this.status == 200) {
+      var html = '';
+      var xml = this.responseXML;
+      var items = xml.getElementsByTagName('item'), title, link;
+      for (var i = 0; i < 5; i++) {
+        title = items[i].getElementsByTagName('title')[0];
+        link = items[i].getElementsByTagName('link')[0];
+        description = items[i].getElementsByTagName('description')[0];
+        html += '<p><a href="' + link.textContent + '" data-description="' + encodeURIComponent(description.textContent) + '" onclick="showPreview(event)">' + title.textContent.substring(0, title.textContent.lastIndexOf('-') - 1).replace(' - Wiadomości', '') + '</a></p>';
+      }
+      news.innerHTML = html;
+    }
+  };
+  xhr.send();
+}
+fetchNews();
+
+// Airly
+var airlyUrl = 'proxy.php?type=airly';
+function sparkline(a,f,m,b,g) {var c=document.getElementById(a);a=c.getContext("2d");b=b||"#000";g=g||"line";var d=c.height-3,l=c.width;c=f.length;var k=Math.max.apply(Math,f),n=l/c;k/=d;var e=0,h=d-f[0]/k;a.clearRect(0,0,l,d);a.beginPath();a.strokeStyle=b;a.moveTo(e,h);for(b=1;b<c;b+=1)e+=n,h=d-f[b]/k+2,"bar"==g&&a.moveTo(e,d),a.lineTo(e,h);a.stroke();m&&"line"==g&&(a.beginPath(),a.fillStyle="#000",a.arc(e,h,3,0,2*Math.PI),a.fill())}
+function fetchAirly() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', airlyUrl);
+  xhr.setRequestHeader('Accept', 'application/json');
+  xhr.onreadystatechange = function () {
+    if (this.readyState == 4 && this.status == 200) {
+      var json = eval('(' + this.responseText + ')');
+      document.getElementById('airly').innerHTML = '<canvas id="history" width="100" height="25"></canvas><canvas id="forecast" width="100" height="25"></canvas> CAQI:&nbsp;' + Math.round(json.current.indexes[0].value) + ', PM10:&nbsp;' + Math.round(json.current.values[2].value) + 'µg/m³, wilg:&nbsp;' + Math.round(json.current.values[4].value) + '%, temp:&nbsp;' + Math.round(json.current.values[5].value) + '°C';
+      sparkline('history', json.history.map(function (m) { return m.indexes[0].value; }), true);
+      sparkline('forecast', json.forecast.map(function (m) { return m.indexes[0].value; }), false, '#aaa');
+    }
+  };
+  xhr.send();
+}
+fetchAirly();
+
+// Meteo
+var meteoUrl = 'http://www.meteo.pl/um/metco/mgram_pict.php?ntype=0n&row=466&col=232&lang=pl&date=';
+function fetchMeteo() {
+  document.getElementById('meteo').src = meteoUrl + new Date().getTime();
+}
+fetchMeteo();
+  </script>
+</body>
+</html>
