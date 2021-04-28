@@ -9,6 +9,8 @@ The dashboard auto-refreshes its air measurement every hour, news and weather fo
 
 If you provide a [full text RSS feed](https://www.freefullrss.com/), its content preview will be shown in a pop-up window, without loading the full website.
 
+![Kindle dahsboard](https://i.imgur.com/khIJ9Ci.jpg)
+
 ## License
 
 &copy; 2021 Jerzy Głowacki under the MIT License.
