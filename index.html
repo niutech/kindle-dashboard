@@ -23,6 +23,7 @@ img {
   padding: 0 10px;
   border-bottom: 1px solid #000;
   font-size: 6em;
+  line-height: 1;
 }
 #time span {
   float: right;
@@ -33,31 +34,33 @@ img {
 p {
   margin: 5px 0;
 }
-#todos {
+#todo {
+  width: 98%;
+  height: 85px;
   padding-left: 10px;
+  border: none;
   border-bottom: 1px solid #000;
 }
-#todo, #todo2 {
-  width: 49%;
-  height: 85px;
-  border: none;
-}
 #news {
+  min-height: 90px;
   padding-left: 10px;
   border-bottom: 1px solid #000;
 }
 #airly {
+  min-height: 30px;
   text-align: center;
   border-bottom: 1px solid #000;
 }
 #history, #forecast {
-  margin: 10px 0;
-  border-bottom: 1px solid #aaa;
+  margin: 5px 0 0;
   vertical-align: middle;
 }
+#weather {
+  text-align: center;
+  overflow-y: hidden;
+}
 #meteo {
-  display: block;
-  margin: auto;
+  margin-top: -30px;
   -webkit-filter: grayscale(100%) contrast(1.5);
   filter: grayscale(100%) contrast(1.5);
 }
@@ -72,6 +75,9 @@ p {
   background-color: #fff;
   font-size: 1.25em;
 }
+#preview:target {
+  display: block;
+}
 #close {
   position: absolute;
   top: 0;
@@ -79,20 +85,28 @@ p {
   padding: 0 10px;
   font-size: 2em;
 }
+
+@media (min-width: 601px) {
+  #todo {
+    float: right;
+    width: 36%;
+    border-left: 1px solid #000;
+  }
+}
   </style>
 </head>
 <body>
   <h1 id="time"></h1>
-  <div id="todos"><textarea id="todo"></textarea><textarea id="todo2"></textarea></div>
+  <textarea id="todo"></textarea>
   <div id="news"></div>
   <div id="airly"></div>
-  <img id="meteo" src="" alt="">
-  <div id="preview"><a id="close" href="#" onclick="closePreview(event)">×</a><div></div></div>
+  <div id="weather"><img id="meteo" src="" alt=""></div>
+  <div id="preview"><a id="close" href="#">×</a><div></div></div>
   <script type="text/javascript">
 // Clock
 var airlyHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]; // when to fetch air quality
 var meteoHours = [6, 12, 18]; // when to fetch forecast/news
-var offset = 5; // offset in minutes
+var offset = 10; // offset in minutes
 var days = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
 var months = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
 function tick() {
@@ -117,28 +131,28 @@ setInterval(tick, 60*1000);
 
 // To-Do
 var todo = document.getElementById('todo');
-var todo2 = document.getElementById('todo2');
 todo.value = decodeURIComponent((document.cookie.match(/(^|;)\s*todo\s*=\s*([^;]+)/) || []).pop() || '');
-todo2.value = decodeURIComponent((document.cookie.match(/(^|;)\s*todo2\s*=\s*([^;]+)/) || []).pop() || '');
-todo.onchange = todo2.onchange = function () {
+todo.onchange = function () {
   var d = new Date();
   d.setTime(d.getTime() + (365*24*60*60*1000));
-  document.cookie = this.id + '=' + encodeURIComponent(this.value) + '; expires=' + d.toUTCString() + '; samesite=strict';
+  document.cookie = 'todo=' + encodeURIComponent(this.value) + '; expires=' + d.toUTCString() + '; samesite=strict';
 };
 
 // Google News
-var newsUrl = 'proxy.php?type=news';
+var newsUrl = 'rss/proxy.php?url=https%3A%2F%2Fnews.google.com%2Frss%3Fhl%3Dpl%26gl%3DPL%26ceid%3DPL%3Apl';
 var news = document.getElementById('news');
 var preview = document.getElementById('preview');
 var close = document.getElementById('close');
-function showPreview(e) {
-  e.preventDefault();
-  preview.lastChild.innerHTML = '<h2>' + e.target.innerHTML + '</h2>' + decodeURIComponent(e.target.getAttribute('data-description'));
-  preview.style.display = 'block';
+var items;
+function getTitle(i) {
+  var title = items[i].getElementsByTagName('title')[0];
+  return title.textContent.substring(0, title.textContent.lastIndexOf('-') - 1).replace(' - Wiadomości', '');
 }
-function closePreview(e) {
-  e.preventDefault();
-  preview.style.display = 'none';
+function getDescription(i) {
+  return items[i].getElementsByTagName('description')[0].textContent.replace(/<img[^>]+>/gi, '');
+}
+function showPreview(i) {
+  preview.lastChild.innerHTML = '<h2>' + getTitle(i) + '</h2>' + getDescription(i);
 }
 function fetchNews() {
   var xhr = new XMLHttpRequest();
@@ -147,12 +161,9 @@ function fetchNews() {
     if (this.readyState == 4 && this.status == 200) {
       var html = '';
       var xml = this.responseXML;
-      var items = xml.getElementsByTagName('item'), title, link;
-      for (var i = 0; i < 5; i++) {
-        title = items[i].getElementsByTagName('title')[0];
-        link = items[i].getElementsByTagName('link')[0];
-        description = items[i].getElementsByTagName('description')[0];
-        html += '<p><a href="' + link.textContent + '" data-description="' + encodeURIComponent(description.textContent) + '" onclick="showPreview(event)">' + title.textContent.substring(0, title.textContent.lastIndexOf('-') - 1).replace(' - Wiadomości', '') + '</a></p>';
+      items = xml.getElementsByTagName('item');
+      for (var i = 0; i < items.length; i++) {
+        html += '<p><a href="#preview" onclick="showPreview(' + i + ')">' + getTitle(i) + '</a></p>';
       }
       news.innerHTML = html;
     }
