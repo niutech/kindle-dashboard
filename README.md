@@ -11,6 +11,10 @@ If you provide a [full text RSS feed](https://www.freefullrss.com/), its content
 
 ![Kindle dahsboard](https://i.imgur.com/khIJ9Ci.jpg)
 
+## Kobo dashboard
+
+There is a separate dashboard for the Kobo e-reader in `kobo.html`, which does not use `#preview` fragment, since it does not work properly in Kobo web browser.
+
 ## License
 
 &copy; 2021 Jerzy Głowacki under the MIT License.
